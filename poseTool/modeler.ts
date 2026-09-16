@@ -5,6 +5,7 @@ export function createMannequin(): Mannequin
 {
     const woodMaterial = new three.MeshStandardMaterial({ color: 0xd98a4b });
     const hips = new three.Group();
+    hips.position.y = 1;
     hips.add(joint(0.12));
     const torso = new three.Group();
     torso.position.y = 0.12;

@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { createMannequin } from "./modeler";
 import type { Pose, RendererApi, JointKey, Axis } from "./types";
+import { color } from "three/tsl";
 
 export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
 {
@@ -9,10 +10,11 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
     const canvasWidth = canvasContainer.clientWidth;
     const canvasHeight = canvasContainer.clientHeight;
     const rendererScene = new THREE.Scene();
-    const userCamera = new THREE.PerspectiveCamera(45, canvasWidth / canvasHeight, 1, 1000);
+    rendererScene.background = new THREE.Color(0xffffff);
+    const userCamera = new THREE.PerspectiveCamera(45, canvasWidth / canvasHeight, 0.1, 1000);
     const light = new THREE.AmbientLight(0xc5c5c5);
     const floorGeometry = new THREE.PlaneGeometry(50, 50);
-    const floorMaterial = new THREE.MeshBasicMaterial( { color: 0xFFFFFF, side: THREE.DoubleSide } );
+    const floorMaterial = new THREE.MeshBasicMaterial( { color: 0xFFFFFF, side: THREE.DoubleSide, opacity: 0.5 } );
     const floor = new THREE.Mesh( floorGeometry, floorMaterial);
     floor.rotateX(-Math.PI / 2);
     const webGl = new THREE.WebGLRenderer();

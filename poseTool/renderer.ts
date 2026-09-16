@@ -21,7 +21,7 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
     webGl.setSize(canvasWidth, canvasHeight);
     canvasContainer.appendChild(webGl.domElement as HTMLCanvasElement);
     const userControls = new OrbitControls(userCamera, webGl.domElement as HTMLCanvasElement);
-    userCamera.position.set( 0, 20, 100);
+    userCamera.position.set( 0, 1.5, 3);
     userControls.update();
     rendererScene.add(light, floor);
 
@@ -115,7 +115,7 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
     function resetCamera()
     {
         userCamera.position.set(0, 1.5, 3);
-        userControls.target.set(0, 0, 0);
+        userControls.target.set(0, 1, 0);
         userControls.update();
     }
 

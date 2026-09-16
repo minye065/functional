@@ -38,8 +38,8 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
     userControls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
     userControls.maxPolarAngle = Math.PI * 0.495;
     userCamera.position.set(0, 1.5, 3);
+    userControls.target.set(0, 1, 0);
     userControls.update();
-
     const mannequin = createMannequin();
     rendererScene.add(mannequin.root);
 

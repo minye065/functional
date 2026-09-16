@@ -56,7 +56,7 @@ export function createMannequin(): Mannequin
     const torsoJoint = joint(0.08);
     torsoJoint.userData.jointKey = "torso";
     torso.add(torsoJoint);
-    const torsoRings = ringSet(0.35);
+    const torsoRings = ringSet(0.11);
     torso.add(torsoRings.x, torsoRings.y, torsoRings.z);
     axisRings.torso = torsoRings;
     const torsoMesh = new three.Mesh(new three.CylinderGeometry(0.22, 0.16, 0.5, 12), newWoodMaterial());

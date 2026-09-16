@@ -29,11 +29,16 @@ export function createMannequin(): Mannequin
     {
         const mesh = new three.Mesh(new three.CylinderGeometry(radiusTop, radiusBottom, height, 12), woodMaterial);
         mesh.position.y = -height / 2;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
         return mesh;
     }
 
     function joint(radius: number): three.Mesh
     {
+        const mesh = new three.Mesh(new three.SphereGeometry(radius, 12, 12), woodMaterial);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
         return new three.Mesh(new three.SphereGeometry(radius, 12, 12), woodMaterial);
     }
     function arm(side: 1 | -1): { shoulder: three.Group; elbow: three.Group }

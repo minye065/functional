@@ -2,28 +2,40 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { createMannequin } from "./modeler";
 import type { Pose, RendererApi, JointKey, Axis } from "./types";
-import { color } from "three/tsl";
 
 export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
 {
     let frameID: number;
+    const webGl = new THREE.WebGLRenderer()
     const canvasWidth = canvasContainer.clientWidth;
     const canvasHeight = canvasContainer.clientHeight;
     const rendererScene = new THREE.Scene();
-    rendererScene.background = new THREE.Color(0xffffff);
-    const userCamera = new THREE.PerspectiveCamera(45, canvasWidth / canvasHeight, 0.1, 1000);
-    const light = new THREE.AmbientLight(0xc5c5c5);
     const floorGeometry = new THREE.PlaneGeometry(50, 50);
-    const floorMaterial = new THREE.MeshBasicMaterial( { color: 0xcedcec, side: THREE.DoubleSide, transparent:true, opacity: 0.5 } );
-    const floor = new THREE.Mesh( floorGeometry, floorMaterial);
+    rendererScene.background = new THREE.Color(0xd9d8d3);
+
+    const hemiLight = new THREE.HemisphereLight(0xfffbef, 0x575452, 2.3);
+    const keyLight = new THREE.DirectionalLight(0xfff1d6, 4.2);
+    keyLight.position.set(4, 7, 5);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(2048, 2048);
+    const rimLight = new THREE.DirectionalLight(0xdde8ef, 2);
+    rimLight.position.set(-5, 4, -4);
+
+    webGl.shadowMap.enabled = true;
+    webGl.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xd9d8d3, roughness: 1 });
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
     floor.rotateX(-Math.PI / 2);
-    const webGl = new THREE.WebGLRenderer();
+    floor.receiveShadow = true;
+
+    rendererScene.add(hemiLight, keyLight, rimLight, floor); 
     webGl.setSize(canvasWidth, canvasHeight);
     canvasContainer.appendChild(webGl.domElement as HTMLCanvasElement);
+    const userCamera = new THREE.PerspectiveCamera(45, canvasWidth / canvasHeight, 0.1, 1000);
     const userControls = new OrbitControls(userCamera, webGl.domElement as HTMLCanvasElement);
     userCamera.position.set( 0, 1.5, 3);
     userControls.update();
-    rendererScene.add(light, floor);
 
     const mannequin = createMannequin();
     rendererScene.add(mannequin.root);
@@ -47,14 +59,14 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
             else if (axis === "z") group.rotation.z = angle;
         }
     }
-
-    function animate()
+    function updateAnimationFrame()
     {
-        frameID = requestAnimationFrame(animate);
+        frameID = requestAnimationFrame(updateAnimationFrame);
         userControls.update();
+        userCamera.position.y = Math.max(userCamera.position.y, 0.05);
         webGl.render(rendererScene, userCamera);
     }
-    animate();
+    updateAnimationFrame();
 
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();

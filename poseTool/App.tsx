@@ -20,7 +20,7 @@ export default function App()
   return(
     <div className="pose-tool">
       <div className="canvas-wrap" ref={mountRef} />
-      <div className="sidebar">
+      <div className="tool-doc">
         <button onClick={() => apiRef.current?.resetCamera()}>Reset camera</button>
         <button onClick={() => { const img = apiRef.current?.getImage(); if (img) exportPng(img); }}>
           Download PNG

@@ -14,7 +14,7 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
     const userCamera = new THREE.PerspectiveCamera(45, canvasWidth / canvasHeight, 0.1, 1000);
     const light = new THREE.AmbientLight(0xc5c5c5);
     const floorGeometry = new THREE.PlaneGeometry(50, 50);
-    const floorMaterial = new THREE.MeshBasicMaterial( { color: 0xFFFFFF, side: THREE.DoubleSide, opacity: 0.5 } );
+    const floorMaterial = new THREE.MeshBasicMaterial( { color: 0xcedcec, side: THREE.DoubleSide, transparent:true, opacity: 0.5 } );
     const floor = new THREE.Mesh( floorGeometry, floorMaterial);
     floor.rotateX(-Math.PI / 2);
     const webGl = new THREE.WebGLRenderer();

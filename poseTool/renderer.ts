@@ -18,6 +18,11 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
     keyLight.position.set(4, 7, 5);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.bias = -0.001;
+    keyLight.shadow.camera.left = -5;
+    keyLight.shadow.camera.right = 5;
+    keyLight.shadow.camera.top = 5;
+    keyLight.shadow.camera.bottom = -5;
     const rimLight = new THREE.DirectionalLight(0xdde8ef, 2);
     rimLight.position.set(-5, 4, -4);
 
@@ -29,17 +34,19 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
     floor.rotateX(-Math.PI / 2);
     floor.receiveShadow = true;
 
-    rendererScene.add(hemiLight, keyLight, rimLight, floor); 
+    rendererScene.add(hemiLight, keyLight, rimLight, floor);
     webGl.setSize(canvasWidth, canvasHeight);
     canvasContainer.appendChild(webGl.domElement as HTMLCanvasElement);
+
     const userCamera = new THREE.PerspectiveCamera(45, canvasWidth / canvasHeight, 0.1, 1000);
     const userControls = new OrbitControls(userCamera, webGl.domElement as HTMLCanvasElement);
     userControls.maxPolarAngle = Math.PI * 0.495;
-    userCamera.position.set( 0, 1.5, 3);
+    userCamera.position.set(0, 1.5, 3);
     userControls.update();
 
     const mannequin = createMannequin();
     rendererScene.add(mannequin.root);
+
     let currentPose: Pose =
     {
         leftShoulder: 0, leftElbow: 0,
@@ -60,6 +67,7 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
             else if (axis === "z") group.rotation.z = angle;
         }
     }
+
     function updateAnimationFrame()
     {
         frameID = requestAnimationFrame(updateAnimationFrame);
@@ -71,10 +79,43 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
-
     let dragKey: JointKey | null = null;
+    let selectedKey: JointKey | null = null;
     let lastX = 0;
     const sensitivity = 0.01;
+    const highlightColor = new THREE.Color(0xff2222);
+
+    function selectJoint(key: JointKey)
+    {
+        if (selectedKey === key) return;
+        if (selectedKey) deselectJoint();
+        selectedKey = key;
+        const rings = mannequin.axisRings[key];
+        rings.x.visible = true;
+        rings.y.visible = true;
+        rings.z.visible = true;
+        for (const mesh of mannequin.limbMeshes[key])
+        {
+            const mat = mesh.material as THREE.MeshStandardMaterial;
+            mat.emissive = highlightColor.clone();
+            mat.emissiveIntensity = 0.6;
+        }
+    }
+
+    function deselectJoint()
+    {
+        if (!selectedKey) return;
+        const rings = mannequin.axisRings[selectedKey];
+        rings.x.visible = false;
+        rings.y.visible = false;
+        rings.z.visible = false;
+        for (const mesh of mannequin.limbMeshes[selectedKey])
+        {
+            const mat = mesh.material as THREE.MeshStandardMaterial;
+            mat.emissive.set(0x000000);
+        }
+        selectedKey = null;
+    }
 
     function onPointerMove(event: PointerEvent)
     {
@@ -84,6 +125,7 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
         currentPose[dragKey] += deltaX * sensitivity;
         applyPose();
     }
+
     function onPointerDown(event: PointerEvent)
     {
         const rect = webGl.domElement.getBoundingClientRect();
@@ -106,6 +148,7 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
             dragKey = intersects[0].object.userData.jointKey as JointKey;
             lastX = event.clientX;
             userControls.enabled = false;
+            selectJoint(dragKey);
         }
     }
 
@@ -113,11 +156,13 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
     {
         dragKey = null;
         userControls.enabled = true;
+        deselectJoint();
     }
 
     webGl.domElement.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+
     function setPose(pose: Pose)
     {
         currentPose = pose;

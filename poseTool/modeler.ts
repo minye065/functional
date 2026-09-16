@@ -10,12 +10,13 @@ export function createMannequin(): Mannequin
         return new three.MeshStandardMaterial({ color: 0xd98a4b });
     }
 
-    function limb(radiusTop: number, radiusBottom: number, height: number): three.Mesh
+    function limb(radiusTop: number, radiusBottom: number, height: number, key: JointKey): three.Mesh
     {
         const mesh = new three.Mesh(new three.CylinderGeometry(radiusTop, radiusBottom, height, 12), newWoodMaterial());
         mesh.position.y = -height / 2;
         mesh.castShadow = true;
         mesh.receiveShadow = true;
+        mesh.userData.jointKey = key;
         return mesh;
     }
 
@@ -63,6 +64,7 @@ export function createMannequin(): Mannequin
     torsoMesh.position.y = 0.25;
     torsoMesh.castShadow = true;
     torsoMesh.receiveShadow = true;
+    torsoMesh.userData.jointKey = "torso";
     torso.add(torsoMesh);
     limbMeshes.torso = [torsoJoint, torsoMesh];
     hips.add(torso);
@@ -95,7 +97,7 @@ export function createMannequin(): Mannequin
         const shoulderRings = ringSet(0.07);
         shoulder.add(shoulderRings.x, shoulderRings.y, shoulderRings.z);
         axisRings[shoulderKey] = shoulderRings;
-        const upperArmMesh = limb(0.05, 0.045, 0.32);
+        const upperArmMesh = limb(0.05, 0.045, 0.32, shoulderKey);
         shoulder.add(upperArmMesh);
         limbMeshes[shoulderKey] = [shoulderMesh, upperArmMesh];
 
@@ -107,13 +109,14 @@ export function createMannequin(): Mannequin
         const elbowRings = ringSet(0.065);
         elbow.add(elbowRings.x, elbowRings.y, elbowRings.z);
         axisRings[elbowKey] = elbowRings;
-        const lowerArmMesh = limb(0.045, 0.04, 0.3);
+        const lowerArmMesh = limb(0.045, 0.04, 0.3, elbowKey);
         elbow.add(lowerArmMesh);
         const hand = new three.Mesh(new three.SphereGeometry(0.045, 10, 10), newWoodMaterial());
         hand.scale.set(1, 0.6, 0.8);
         hand.position.y = -0.32;
         hand.castShadow = true;
         hand.receiveShadow = true;
+        hand.userData.jointKey = elbowKey;
         elbow.add(hand);
         limbMeshes[elbowKey] = [elbowMesh, lowerArmMesh, hand];
 
@@ -135,7 +138,7 @@ export function createMannequin(): Mannequin
         const hipRings = ringSet(0.09);
         hip.add(hipRings.x, hipRings.y, hipRings.z);
         axisRings[hipKey] = hipRings;
-        const upperLegMesh = limb(0.09, 0.08, 0.45);
+        const upperLegMesh = limb(0.09, 0.08, 0.45, hipKey);
         hip.add(upperLegMesh);
         limbMeshes[hipKey] = [hipMesh, upperLegMesh];
 
@@ -147,13 +150,14 @@ export function createMannequin(): Mannequin
         const kneeRings = ringSet(0.08);
         knee.add(kneeRings.x, kneeRings.y, kneeRings.z);
         axisRings[kneeKey] = kneeRings;
-        const lowerLegMesh = limb(0.08, 0.06, 0.42);
+        const lowerLegMesh = limb(0.08, 0.06, 0.42, kneeKey);
         knee.add(lowerLegMesh);
         const foot = new three.Mesh(new three.SphereGeometry(0.07, 10, 10), newWoodMaterial());
         foot.scale.set(0.9, 0.5, 1.4);
         foot.position.set(0, -0.42, 0.03);
         foot.castShadow = true;
         foot.receiveShadow = true;
+        foot.userData.jointKey = kneeKey;
         knee.add(foot);
         limbMeshes[kneeKey] = [kneeMesh, lowerLegMesh, foot];
 

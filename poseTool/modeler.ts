@@ -56,7 +56,7 @@ export function createMannequin(): Mannequin
     const torsoJoint = joint(0.08);
     torsoJoint.userData.jointKey = "torso";
     torso.add(torsoJoint);
-    const torsoRings = ringSet(0.11);
+    const torsoRings = ringSet(0.35);
     torso.add(torsoRings.x, torsoRings.y, torsoRings.z);
     axisRings.torso = torsoRings;
     const torsoMesh = new three.Mesh(new three.CylinderGeometry(0.22, 0.16, 0.5, 12), newWoodMaterial());
@@ -132,7 +132,7 @@ export function createMannequin(): Mannequin
         const hipMesh = joint(0.07);
         hipMesh.userData.jointKey = hipKey;
         hip.add(hipMesh);
-        const hipRings = ringSet(0.09);
+        const hipRings = ringSet(0.18);
         hip.add(hipRings.x, hipRings.y, hipRings.z);
         axisRings[hipKey] = hipRings;
         const upperLegMesh = limb(0.09, 0.08, 0.45, hipKey);
@@ -144,7 +144,7 @@ export function createMannequin(): Mannequin
         const kneeMesh = joint(0.06);
         kneeMesh.userData.jointKey = kneeKey;
         knee.add(kneeMesh);
-        const kneeRings = ringSet(0.08);
+        const kneeRings = ringSet(0.20);
         knee.add(kneeRings.x, kneeRings.y, kneeRings.z);
         axisRings[kneeKey] = kneeRings;
         const lowerLegMesh = limb(0.08, 0.06, 0.42, kneeKey);

@@ -34,6 +34,7 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
     canvasContainer.appendChild(webGl.domElement as HTMLCanvasElement);
     const userCamera = new THREE.PerspectiveCamera(45, canvasWidth / canvasHeight, 0.1, 1000);
     const userControls = new OrbitControls(userCamera, webGl.domElement as HTMLCanvasElement);
+    userControls.maxPolarAngle = Math.PI * 0.495;
     userCamera.position.set( 0, 1.5, 3);
     userControls.update();
 
@@ -63,7 +64,6 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
     {
         frameID = requestAnimationFrame(updateAnimationFrame);
         userControls.update();
-        userCamera.position.y = Math.max(userCamera.position.y, 0.05);
         webGl.render(rendererScene, userCamera);
     }
     updateAnimationFrame();

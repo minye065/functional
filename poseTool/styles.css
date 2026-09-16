@@ -41,7 +41,6 @@ html, body, #root
     cursor: pointer;
     transition: background 0.18s ease, transform 0.18s ease;
 }
-
 .tool-dock button:hover
 {
     background: #e7e2d8;

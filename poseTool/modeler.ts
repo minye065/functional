@@ -30,28 +30,27 @@ export function createMannequin(): Mannequin
 
     function ringMesh(radius: number, axis: Axis): three.Mesh
     {
-        const mesh = new three.Mesh(
+        const mesh = new three.Mesh
+        (
             new three.TorusGeometry(radius, radius * 0.08, 8, 32),
             new three.MeshBasicMaterial({ color: ringColors[axis], transparent: true, opacity: 0.85 })
         );
         if (axis === "x") mesh.rotation.y = Math.PI / 2;
         else if (axis === "y") mesh.rotation.x = Math.PI / 2;
         mesh.visible = false;
+        mesh.userData.isRing = true;
+        mesh.userData.axis = axis;
         return mesh;
     }
-
     function ringSet(radius: number): Record<Axis, three.Mesh>
     {
         return { x: ringMesh(radius, "x"), y: ringMesh(radius, "y"), z: ringMesh(radius, "z") };
     }
-
     const limbMeshes = {} as Record<JointKey, three.Mesh[]>;
     const axisRings = {} as Record<JointKey, Record<Axis, three.Mesh>>;
-
     const hips = new three.Group();
     hips.position.y = 1;
     hips.add(joint(0.12));
-
     const torso = new three.Group();
     torso.position.y = 0.12;
     const torsoJoint = joint(0.08);
@@ -68,7 +67,6 @@ export function createMannequin(): Mannequin
     torso.add(torsoMesh);
     limbMeshes.torso = [torsoJoint, torsoMesh];
     hips.add(torso);
-
     const head = new three.Group();
     head.position.y = 0.5;
     const headMesh = new three.Mesh(new three.SphereGeometry(0.14, 16, 16), newWoodMaterial());
@@ -83,7 +81,6 @@ export function createMannequin(): Mannequin
     axisRings.head = headRings;
     limbMeshes.head = [headMesh];
     torso.add(head);
-
     function arm(side: 1 | -1): { shoulder: three.Group; elbow: three.Group }
     {
         const shoulderKey: JointKey = side === -1 ? "leftShoulder" : "rightShoulder";
@@ -165,12 +162,10 @@ export function createMannequin(): Mannequin
         hips.add(hip);
         return { hip, knee };
     }
-
     const leftArm = arm(-1);
     const rightArm = arm(1);
     const leftLeg = leg(-1);
     const rightLeg = leg(1);
-
     const joints: Record<JointKey, three.Group> =
     {
         torso, head,

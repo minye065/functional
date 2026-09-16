@@ -12,7 +12,6 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
     const rendererScene = new THREE.Scene();
     const floorGeometry = new THREE.PlaneGeometry(50, 50);
     rendererScene.background = new THREE.Color(0xd9d8d3);
-
     const hemiLight = new THREE.HemisphereLight(0xfffbef, 0x575452, 2.3);
     const keyLight = new THREE.DirectionalLight(0xfff1d6, 4.2);
     keyLight.position.set(4, 7, 5);
@@ -25,19 +24,15 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
     keyLight.shadow.camera.bottom = -5;
     const rimLight = new THREE.DirectionalLight(0xdde8ef, 2);
     rimLight.position.set(-5, 4, -4);
-
     webGl.shadowMap.enabled = true;
     webGl.shadowMap.type = THREE.PCFSoftShadowMap;
-
     const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xd9d8d3, roughness: 1 });
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
     floor.rotateX(-Math.PI / 2);
     floor.receiveShadow = true;
-
     rendererScene.add(hemiLight, keyLight, rimLight, floor);
     webGl.setSize(canvasWidth, canvasHeight);
     canvasContainer.appendChild(webGl.domElement as HTMLCanvasElement);
-
     const userCamera = new THREE.PerspectiveCamera(45, canvasWidth / canvasHeight, 0.1, 1000);
     const userControls = new OrbitControls(userCamera, webGl.domElement as HTMLCanvasElement);
     userControls.maxPolarAngle = Math.PI * 0.495;
@@ -47,24 +42,27 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
     const mannequin = createMannequin();
     rendererScene.add(mannequin.root);
 
+    function zeroRotation(): { x: number; y: number; z: number }
+    {
+        return { x: 0, y: 0, z: 0 };
+    }
+
     let currentPose: Pose =
     {
-        leftShoulder: 0, leftElbow: 0,
-        rightShoulder: 0, rightElbow: 0,
-        leftHip: 0, leftKnee: 0,
-        rightHip: 0, rightKnee: 0,
-        torso: 0, head: 0,
+        leftShoulder: zeroRotation(), leftElbow: zeroRotation(),
+        rightShoulder: zeroRotation(), rightElbow: zeroRotation(),
+        leftHip: zeroRotation(), leftKnee: zeroRotation(),
+        rightHip: zeroRotation(), rightKnee: zeroRotation(),
+        torso: zeroRotation(), head: zeroRotation(),
     };
 
     function applyPose()
     {
-        for (const [key, axis] of Object.entries(mannequin.axis) as [JointKey, Axis][])
+        for (const key of Object.keys(mannequin.joints) as JointKey[])
         {
-            const angle = currentPose[key];
+            const rotation = currentPose[key];
             const group = mannequin.joints[key];
-            if (axis === "x") group.rotation.x = angle;
-            else if (axis === "y") group.rotation.y = angle;
-            else if (axis === "z") group.rotation.z = angle;
+            group.rotation.set(rotation.x, rotation.y, rotation.z);
         }
     }
 
@@ -78,13 +76,20 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
 
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
+    const allRingMeshes: THREE.Mesh[] = [];
+    const allLimbMeshes: THREE.Mesh[] = [];
+    for (const key of Object.keys(mannequin.axisRings) as JointKey[])
+    {
+        const rings = mannequin.axisRings[key];
+        allRingMeshes.push(rings.x, rings.y, rings.z);
+        allLimbMeshes.push(...mannequin.limbMeshes[key]);
+    }
 
-    let dragKey: JointKey | null = null;
     let selectedKey: JointKey | null = null;
+    let dragAxis: Axis | null = null;
     let lastX = 0;
     const sensitivity = 0.01;
     const highlightColor = new THREE.Color(0xff2222);
-
     function selectJoint(key: JointKey)
     {
         if (selectedKey === key) return;
@@ -116,52 +121,72 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
         }
         selectedKey = null;
     }
-
-    function onPointerMove(event: PointerEvent)
-    {
-        if (!dragKey) return;
-        const deltaX = event.clientX - lastX;
-        lastX = event.clientX;
-        currentPose[dragKey] += deltaX * sensitivity;
-        applyPose();
-    }
-
-    function onPointerDown(event: PointerEvent)
+    function updateMouseFromEvent(event: PointerEvent)
     {
         const rect = webGl.domElement.getBoundingClientRect();
         mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
         raycaster.setFromCamera(mouse, userCamera);
+    }
+    function onPointerMove(event: PointerEvent)
+    {
+        if (!dragAxis || !selectedKey) return;
+        const deltaX = event.clientX - lastX;
+        lastX = event.clientX;
+        currentPose[selectedKey][dragAxis] += deltaX * sensitivity;
+        applyPose();
+    }
 
-        const jointMeshes: THREE.Mesh[] = [];
-        mannequin.root.traverse((obj) =>
+    function onPointerDown(event: PointerEvent)
+    {
+        updateMouseFromEvent(event);
+
+        if (selectedKey)
         {
-            if (obj instanceof THREE.Mesh && obj.userData?.jointKey)
+            const rings = mannequin.axisRings[selectedKey];
+            const ringIntersects = raycaster.intersectObjects([rings.x, rings.y, rings.z]);
+            if (ringIntersects.length > 0)
             {
-                jointMeshes.push(obj);
+                dragAxis = ringIntersects[0].object.userData.axis as Axis;
+                lastX = event.clientX;
+                userControls.enabled = false;
+                return;
             }
-        });
+        }
 
-        const intersects = raycaster.intersectObjects(jointMeshes);
-        if (intersects.length > 0)
+        const limbIntersects = raycaster.intersectObjects(allLimbMeshes);
+        if (limbIntersects.length > 0)
         {
-            dragKey = intersects[0].object.userData.jointKey as JointKey;
-            lastX = event.clientX;
-            userControls.enabled = false;
-            selectJoint(dragKey);
+            const hitKey = limbIntersects[0].object.userData.jointKey as JointKey;
+            selectJoint(hitKey);
+        }
+        else
+        {
+            deselectJoint();
         }
     }
 
     function onPointerUp()
     {
-        dragKey = null;
-        userControls.enabled = true;
-        deselectJoint();
+        if (dragAxis)
+        {
+            dragAxis = null;
+            userControls.enabled = true;
+        }
+    }
+
+    function onKeyDown(event: KeyboardEvent)
+    {
+        if (event.key === "Escape")
+        {
+            deselectJoint();
+        }
     }
 
     webGl.domElement.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('keydown', onKeyDown);
 
     function setPose(pose: Pose)
     {
@@ -188,6 +213,7 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
         webGl.domElement.removeEventListener('pointerdown', onPointerDown);
         window.removeEventListener('pointermove', onPointerMove);
         window.removeEventListener('pointerup', onPointerUp);
+        window.removeEventListener('keydown', onKeyDown);
         rendererScene.traverse((obj) =>
         {
             if (obj instanceof THREE.Mesh)
@@ -205,6 +231,5 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
         });
         canvasContainer.removeChild(webGl.domElement);
     }
-
     return { setPose, resetCamera, getImage, dispose };
 }

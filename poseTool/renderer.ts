@@ -6,7 +6,7 @@ import type { Pose, RendererApi, JointKey, Axis } from "./types";
 export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
 {
     let frameID: number;
-    const webGl = new THREE.WebGLRenderer()
+    const webGl = new THREE.WebGLRenderer({ preserveDrawingBuffer: true });
     const canvasWidth = canvasContainer.clientWidth;
     const canvasHeight = canvasContainer.clientHeight;
     const rendererScene = new THREE.Scene();

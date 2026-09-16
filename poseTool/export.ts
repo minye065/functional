@@ -5,7 +5,9 @@ export function exportPng(dataUrl: string): void
     const link = document.createElement("a");
     link.href = dataUrl;
     link.download = "pose-reference.png";
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
 }
 
 export function exportPdf(dataUrl: string): void

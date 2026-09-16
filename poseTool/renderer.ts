@@ -10,10 +10,10 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
     const canvasHeight = canvasContainer.clientHeight;
     const rendererScene = new THREE.Scene();
     const userCamera = new THREE.PerspectiveCamera(45, canvasWidth / canvasHeight, 1, 1000);
-    const light = new THREE.AmbientLight(0x404040);
+    const light = new THREE.AmbientLight(0xc5c5c5);
     const floorGeometry = new THREE.PlaneGeometry(50, 50);
-    const material = new THREE.MeshBasicMaterial( { color: 0xffff00, side: THREE.DoubleSide } );
-    const floor = new THREE.Mesh( floorGeometry, material );
+    const floorMaterial = new THREE.MeshBasicMaterial( { color: 0xFFFFFF, side: THREE.DoubleSide } );
+    const floor = new THREE.Mesh( floorGeometry, floorMaterial);
     floor.rotateX(-Math.PI / 2);
     const webGl = new THREE.WebGLRenderer();
     webGl.setSize(canvasWidth, canvasHeight);

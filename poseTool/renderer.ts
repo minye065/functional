@@ -6,104 +6,189 @@ import type { Pose, RendererApi, JointKey, Axis } from "./types";
 export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
 {
     let frameID: number;
+    const webGl = new THREE.WebGLRenderer({ preserveDrawingBuffer: true });
     const canvasWidth = canvasContainer.clientWidth;
     const canvasHeight = canvasContainer.clientHeight;
     const rendererScene = new THREE.Scene();
-    const userCamera = new THREE.PerspectiveCamera(45, canvasWidth / canvasHeight, 1, 1000);
-    const light = new THREE.AmbientLight(0x404040);
     const floorGeometry = new THREE.PlaneGeometry(50, 50);
-    const material = new THREE.MeshBasicMaterial( { color: 0xffff00, side: THREE.DoubleSide } );
-    const floor = new THREE.Mesh( floorGeometry, material );
+    rendererScene.background = new THREE.Color(0xd9d8d3);
+    const hemiLight = new THREE.HemisphereLight(0xfffbef, 0x575452, 2.3);
+    const keyLight = new THREE.DirectionalLight(0xfff1d6, 4.2);
+    keyLight.position.set(4, 7, 5);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.bias = -0.001;
+    keyLight.shadow.camera.left = -5;
+    keyLight.shadow.camera.right = 5;
+    keyLight.shadow.camera.top = 5;
+    keyLight.shadow.camera.bottom = -5;
+    const rimLight = new THREE.DirectionalLight(0xdde8ef, 2);
+    rimLight.position.set(-5, 4, -4);
+    webGl.shadowMap.enabled = true;
+    webGl.shadowMap.type = THREE.PCFSoftShadowMap;
+    const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xd9d8d3, roughness: 1 });
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
     floor.rotateX(-Math.PI / 2);
-    const webGl = new THREE.WebGLRenderer();
+    floor.receiveShadow = true;
+    rendererScene.add(hemiLight, keyLight, rimLight, floor);
     webGl.setSize(canvasWidth, canvasHeight);
     canvasContainer.appendChild(webGl.domElement as HTMLCanvasElement);
+    const userCamera = new THREE.PerspectiveCamera(45, canvasWidth / canvasHeight, 0.1, 1000);
     const userControls = new OrbitControls(userCamera, webGl.domElement as HTMLCanvasElement);
-    userCamera.position.set( 0, 20, 100);
+    userControls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+    userControls.maxPolarAngle = Math.PI * 0.495;
+    userCamera.position.set(0, 1.5, 3);
+    userControls.target.set(0, 1, 0);
     userControls.update();
-    rendererScene.add(light, floor);
-
     const mannequin = createMannequin();
     rendererScene.add(mannequin.root);
+
+    function zeroRotation(): { x: number; y: number; z: number }
+    {
+        return { x: 0, y: 0, z: 0 };
+    }
+
     let currentPose: Pose =
     {
-        leftShoulder: 0, leftElbow: 0,
-        rightShoulder: 0, rightElbow: 0,
-        leftHip: 0, leftKnee: 0,
-        rightHip: 0, rightKnee: 0,
-        torso: 0, head: 0,
+        leftShoulder: zeroRotation(), leftElbow: zeroRotation(),
+        rightShoulder: zeroRotation(), rightElbow: zeroRotation(),
+        leftHip: zeroRotation(), leftKnee: zeroRotation(),
+        rightHip: zeroRotation(), rightKnee: zeroRotation(),
+        torso: zeroRotation(), head: zeroRotation(),
     };
 
     function applyPose()
     {
-        for (const [key, axis] of Object.entries(mannequin.axis) as [JointKey, Axis][])
+        for (const key of Object.keys(mannequin.joints) as JointKey[])
         {
-            const angle = currentPose[key];
+            const rotation = currentPose[key];
             const group = mannequin.joints[key];
-            if (axis === "x") group.rotation.x = angle;
-            else if (axis === "y") group.rotation.y = angle;
-            else if (axis === "z") group.rotation.z = angle;
+            group.rotation.set(rotation.x, rotation.y, rotation.z);
         }
     }
 
-    function animate()
+    function updateAnimationFrame()
     {
-        frameID = requestAnimationFrame(animate);
+        frameID = requestAnimationFrame(updateAnimationFrame);
         userControls.update();
         webGl.render(rendererScene, userCamera);
     }
-    animate();
+    updateAnimationFrame();
 
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
+    const allRingMeshes: THREE.Mesh[] = [];
+    const allLimbMeshes: THREE.Mesh[] = [];
+    for (const key of Object.keys(mannequin.axisRings) as JointKey[])
+    {
+        const rings = mannequin.axisRings[key];
+        allRingMeshes.push(rings.x, rings.y, rings.z);
+        allLimbMeshes.push(...mannequin.limbMeshes[key]);
+    }
 
-
-    let dragKey: JointKey | null = null;
+    let selectedKey: JointKey | null = null;
+    let dragAxis: Axis | null = null;
     let lastX = 0;
     const sensitivity = 0.01;
-
-    function onPointerMove(event: PointerEvent)
+    const highlightColor = new THREE.Color(0xff2222);
+    function selectJoint(key: JointKey)
     {
-        if (!dragKey) return;
-        const deltaX = event.clientX - lastX;
-        lastX = event.clientX;
-        currentPose[dragKey] += deltaX * sensitivity;
-        applyPose();
+        if (selectedKey === key) return;
+        if (selectedKey) deselectJoint();
+        selectedKey = key;
+        const rings = mannequin.axisRings[key];
+        rings.x.visible = true;
+        rings.y.visible = true;
+        rings.z.visible = true;
+        for (const mesh of mannequin.limbMeshes[key])
+        {
+            const mat = mesh.material as THREE.MeshStandardMaterial;
+            mat.emissive = highlightColor.clone();
+            mat.emissiveIntensity = 0.6;
+        }
     }
-    function onPointerDown(event: PointerEvent)
+
+    function deselectJoint()
+    {
+        if (!selectedKey) return;
+        const rings = mannequin.axisRings[selectedKey];
+        rings.x.visible = false;
+        rings.y.visible = false;
+        rings.z.visible = false;
+        for (const mesh of mannequin.limbMeshes[selectedKey])
+        {
+            const mat = mesh.material as THREE.MeshStandardMaterial;
+            mat.emissive.set(0x000000);
+        }
+        selectedKey = null;
+    }
+    function updateMouseFromEvent(event: PointerEvent)
     {
         const rect = webGl.domElement.getBoundingClientRect();
         mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
         raycaster.setFromCamera(mouse, userCamera);
+    }
+    function onPointerMove(event: PointerEvent)
+    {
+        if (!dragAxis || !selectedKey) return;
+        const deltaX = event.clientX - lastX;
+        lastX = event.clientX;
+        currentPose[selectedKey][dragAxis] += deltaX * sensitivity;
+        applyPose();
+    }
 
-        const jointMeshes: THREE.Mesh[] = [];
-        mannequin.root.traverse((obj) =>
+    function onPointerDown(event: PointerEvent)
+    {
+        updateMouseFromEvent(event);
+
+        if (selectedKey)
         {
-            if (obj instanceof THREE.Mesh && obj.userData?.jointKey)
+            const rings = mannequin.axisRings[selectedKey];
+            const ringIntersects = raycaster.intersectObjects([rings.x, rings.y, rings.z]);
+            if (ringIntersects.length > 0)
             {
-                jointMeshes.push(obj);
+                dragAxis = ringIntersects[0].object.userData.axis as Axis;
+                lastX = event.clientX;
+                userControls.enabled = false;
+                return;
             }
-        });
+        }
 
-        const intersects = raycaster.intersectObjects(jointMeshes);
-        if (intersects.length > 0)
+        const limbIntersects = raycaster.intersectObjects(allLimbMeshes);
+        if (limbIntersects.length > 0)
         {
-            dragKey = intersects[0].object.userData.jointKey as JointKey;
-            lastX = event.clientX;
-            userControls.enabled = false;
+            const hitKey = limbIntersects[0].object.userData.jointKey as JointKey;
+            selectJoint(hitKey);
+        }
+        else
+        {
+            deselectJoint();
         }
     }
 
     function onPointerUp()
     {
-        dragKey = null;
-        userControls.enabled = true;
+        if (dragAxis)
+        {
+            dragAxis = null;
+            userControls.enabled = true;
+        }
+    }
+
+    function onKeyDown(event: KeyboardEvent)
+    {
+        if (event.key === "Escape")
+        {
+            deselectJoint();
+        }
     }
 
     webGl.domElement.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('keydown', onKeyDown);
+
     function setPose(pose: Pose)
     {
         currentPose = pose;
@@ -113,7 +198,7 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
     function resetCamera()
     {
         userCamera.position.set(0, 1.5, 3);
-        userControls.target.set(0, 0, 0);
+        userControls.target.set(0, 1, 0);
         userControls.update();
     }
 
@@ -129,6 +214,7 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
         webGl.domElement.removeEventListener('pointerdown', onPointerDown);
         window.removeEventListener('pointermove', onPointerMove);
         window.removeEventListener('pointerup', onPointerUp);
+        window.removeEventListener('keydown', onKeyDown);
         rendererScene.traverse((obj) =>
         {
             if (obj instanceof THREE.Mesh)
@@ -146,6 +232,5 @@ export function initRenderer(canvasContainer: HTMLDivElement): RendererApi
         });
         canvasContainer.removeChild(webGl.domElement);
     }
-
     return { setPose, resetCamera, getImage, dispose };
 }

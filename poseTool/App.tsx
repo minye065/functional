@@ -2,7 +2,9 @@ import { useEffect, useRef } from "react";
 import { initRenderer } from "./renderer";
 import { exportPng, exportPdf } from "./export";
 import type { RendererApi } from "./types";
-
+// @ts-expect-error
+import "./styles.css";
+ 
 export default function App()
 {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -18,7 +20,7 @@ export default function App()
   return(
     <div className="pose-tool">
       <div className="canvas-wrap" ref={mountRef} />
-      <div className="sidebar">
+      <div className="tool-dock">
         <button onClick={() => apiRef.current?.resetCamera()}>Reset camera</button>
         <button onClick={() => { const img = apiRef.current?.getImage(); if (img) exportPng(img); }}>
           Download PNG
